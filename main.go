@@ -27,7 +27,8 @@ func main() {
 
 	priceColor := colorRed
 	// colorYellow := "\033[33m"
-
+	stopPrice := 0.0
+	//sellPrice := 0.0
 	//initialPrice := 0.0
 	initialBuyPrice := 0.0
 	highPrice := 0.0
@@ -81,7 +82,7 @@ func main() {
 
 	initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
 	stopLossPrice = initialBuyPrice - (initialBuyPrice * 0.5 / 100)
-	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 0.5 / 100)
+	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1 / 100)
 	highPrice = minimumSellPrice
 
 	fmt.Println("initialBuyPrice")
@@ -109,8 +110,9 @@ func main() {
 			highPrice = currentPrice
 			color.Yellow("Nuevo precio más alto")
 
-			stopPrice := highPrice - (highPrice * 0.3 / 100)
-			sellPrice := highPrice - (highPrice * 0.5 / 100)
+			stopPrice = highPrice - (highPrice * 0.5 / 100)
+			/*
+			sellPrice = highPrice - (highPrice * 1 / 100)
 
 			fmt.Println("sellPrice")
 			fmt.Println(sellPrice)
@@ -131,6 +133,33 @@ func main() {
 				fmt.Println(err)
 				return
 			}
+			*/
+		}
+
+		if currentPrice <= stopPrice {
+			color.Green("TAKE PROFIT")
+			color.Red("currentPrice")
+			color.Red(parsePriceToString(currentPrice))
+
+			color.Red("stopLossPrice")
+			color.Red(parsePriceToString(stopLossPrice))
+
+			if order != nil {
+				cancelOrder(client, selectedSymbol, order.OrderID)
+			}
+
+			order, err = client.NewCreateOrderService().Symbol(selectedSymbol).
+				Side(binance.SideTypeSell).Type(binance.OrderTypeMarket).
+				Quantity(parsePriceToString(sellQuantity)).
+				Do(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+				return
+			}
+			os.Exit(1)
+			return
+
 		}
 
 		if currentPrice <= stopLossPrice {
@@ -228,9 +257,9 @@ func getCoinBalance(coinName string, balances []binance.Balance) binance.Balance
 
 
 func parsePriceToFloat(price string) float64 {
-	f1, _ := strconv.ParseFloat(price, 8)
+	f1, _ := strconv.ParseFloat(price, 64)
 	price = strconv.FormatFloat(f1, 'f', -1, 64) // 10.9
-	f2, _ := strconv.ParseFloat(price, 8)
+	f2, _ := strconv.ParseFloat(price, 64)
 	return f2
 }
 func parsePriceToString(price float64) string {
