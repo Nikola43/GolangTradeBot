@@ -72,6 +72,7 @@ func main() {
 	}
 	initialBuyPrice = parsePriceToFloat(order.Price)
 	stopLossPrice = initialBuyPrice - (initialBuyPrice * 1 / 100)
+	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1 / 100)
 
 	fmt.Println("order.Status")
 	fmt.Println(order.Status)
@@ -88,7 +89,6 @@ func main() {
 			return
 		}
 
-		minimumSellPrice := currentPrice + (currentPrice * 1 / 100)
 		if currentPrice > initialBuyPrice &&
 			currentPrice > minimumSellPrice &&
 			currentPrice > highPrice {
@@ -102,8 +102,6 @@ func main() {
 			fmt.Println(sellPrice)
 			fmt.Println("stopPrice")
 			fmt.Println(stopPrice)
-
-
 
 			if order != nil {
 				cancelOrder(client, selectedSymbol, order.OrderID)
