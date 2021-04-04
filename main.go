@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -42,6 +43,14 @@ func main() {
 	//coinExist := false
 	coinName := "wrx"
 	pairCoinName := "usdt"
+
+
+	if len(os.Args) == 3 {
+		coinName = os.Args[1]
+		pairCoinName = os.Args[2]
+	}
+
+
 	selectedCoin := strings.ToUpper(coinName)
 	selectedPair := strings.ToUpper(pairCoinName)
 	selectedSymbol := selectedCoin + "" + selectedPair
@@ -89,8 +98,7 @@ func main() {
 			return
 		}
 
-		if currentPrice > initialBuyPrice &&
-			currentPrice > minimumSellPrice &&
+		if currentPrice > minimumSellPrice &&
 			currentPrice > highPrice {
 			highPrice = currentPrice
 			color.Yellow("Nuevo precio más alto")
