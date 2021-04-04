@@ -30,17 +30,17 @@ func main() {
 	colorCyan := "\033[36m"
 
 	priceColor := colorRed
-	//colorYellow := "\033[33m"
+	// colorYellow := "\033[33m"
 
 	//initialPrice := 0.0
 	initialBuyPrice := 0.0
 	highPrice := 0.0
 	stopLossPrice := 0.0
 	sellQuantity := 0.0
-	//buyQuantity := 0.0
+	buyQuantity := 0.0
 	lastPrice := 0.0
-	//orderId := ""
-	//coinExist := false
+	// orderId := ""
+	// coinExist := false
 	coinName := "wrx"
 	pairCoinName := "usdt"
 
@@ -63,11 +63,12 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Println(account)
 
 	// Get Pair Balance
 	pairBalance := getCoinBalance(selectedPair, account.Balances)
 	selectedSymbolTicker := getTickersBySymbol(client, selectedSymbol)
-	buyQuantity := math.Trunc(parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice))
+	buyQuantity = math.Trunc(parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice))
 	sellQuantity = math.Trunc(buyQuantity - (buyQuantity * 1 / 100))
 
 	// INITIAL BUY
@@ -79,6 +80,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+
 	initialBuyPrice = parsePriceToFloat(order.Price)
 	stopLossPrice = initialBuyPrice - (initialBuyPrice * 1 / 100)
 	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1 / 100)
@@ -87,24 +89,22 @@ func main() {
 	fmt.Println(order.Status)
 	order = nil
 
-	// WEB SOCKET
-	wsAggTradeHandler := func(event *binance.WsAggTradeEvent) {
-		currentPrice := parsePriceToFloat(event.Price)
+
+	wsMarketStatHandler := func(event *binance.WsMarketStatEvent) {
+		fmt.Println(event.AskPrice)
+		fmt.Println(event.BidPrice)
+
+		currentPrice := parsePriceToFloat(event.BidPrice)
 		fmt.Println("currentPrice")
 		fmt.Println(currentPrice)
-
-		if order != nil && order.Status == binance.OrderStatusTypeFilled {
-			color.Yellow("PROFIT SELL")
-			return
-		}
 
 		if currentPrice > minimumSellPrice &&
 			currentPrice > highPrice {
 			highPrice = currentPrice
 			color.Yellow("Nuevo precio más alto")
 
-			stopPrice := highPrice - (highPrice * 1 / 100)
-			sellPrice := highPrice - (highPrice * 1.5 / 100)
+			stopPrice := highPrice - (highPrice * 0.4 / 100)
+			sellPrice := highPrice - (highPrice * 0.7 / 100)
 
 			fmt.Println("sellPrice")
 			fmt.Println(sellPrice)
@@ -163,6 +163,103 @@ func main() {
 		//fmt.Printf("\033[2K\r"+priceColor+"%s "+colorGreen+"%s "+colorRed+"%s "+colorReset, parsePriceToString(currentPrice), ticker.BestBid, ticker.BestAsk)
 		lastPrice = currentPrice
 
+		if order != nil && order.Status == binance.OrderStatusTypeFilled {
+			color.Yellow("PROFIT SELL")
+			os.Exit(1)
+			return
+		}
+
+
+
+	}
+	errHandler := func(err error) {
+		fmt.Println(err)
+	}
+	doneC, _, err := binance.WsMarketStatServe(selectedSymbol, wsMarketStatHandler, errHandler)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	<-doneC
+
+	/*
+	// WEB SOCKET
+	wsAggTradeHandler := func(event *binance.WsAggTradeEvent) {
+		currentPrice := parsePriceToFloat(event.Price)
+		fmt.Println("currentPrice")
+		fmt.Println(currentPrice)
+
+		if currentPrice > minimumSellPrice &&
+			currentPrice > highPrice {
+			highPrice = currentPrice
+			color.Yellow("Nuevo precio más alto")
+
+			stopPrice := highPrice - (highPrice * 0.4 / 100)
+			sellPrice := highPrice - (highPrice * 0.7 / 100)
+
+			fmt.Println("sellPrice")
+			fmt.Println(sellPrice)
+			fmt.Println("stopPrice")
+			fmt.Println(stopPrice)
+
+			if order != nil {
+				cancelOrder(client, selectedSymbol, order.OrderID)
+			}
+
+			order, err = client.NewCreateOrderService().Symbol(selectedSymbol).
+				Side(binance.SideTypeSell).Type(binance.OrderTypeStopLossLimit).
+				TimeInForce(binance.TimeInForceTypeGTC).Quantity(parsePriceToString(sellQuantity)).
+				Price(parsePriceToString(sellPrice)).
+				StopPrice(parsePriceToString(stopPrice)).
+				Do(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Println(order)
+		}
+
+		if currentPrice <= stopLossPrice {
+			color.Red("STOP LOSS")
+			color.Red("currentPrice")
+			color.Red(parsePriceToString(currentPrice))
+
+			color.Red("stopLossPrice")
+			color.Red(parsePriceToString(stopLossPrice))
+
+			if order != nil {
+				cancelOrder(client, selectedSymbol, order.OrderID)
+			}
+
+			order, err = client.NewCreateOrderService().Symbol(selectedSymbol).
+				Side(binance.SideTypeSell).Type(binance.OrderTypeMarket).
+				Quantity(parsePriceToString(buyQuantity)).
+				Do(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			return
+		}
+
+		if lastPrice > highPrice {
+			priceColor = colorGreen
+		} else if lastPrice < currentPrice {
+			priceColor = colorRed
+		} else {
+			priceColor = colorCyan
+		}
+
+		//fmt.Printf("\033[2K\r"+priceColor+"%s "+colorGreen+"%s "+colorRed+"%s "+colorReset, parsePriceToString(currentPrice), ticker.BestBid, ticker.BestAsk)
+		lastPrice = currentPrice
+
+		if order != nil && order.Status == binance.OrderStatusTypeFilled {
+			color.Yellow("PROFIT SELL")
+			os.Exit(1)
+			return
+		}
+
 	}
 	errHandler := func(err error) {
 		fmt.Println(err)
@@ -173,6 +270,7 @@ func main() {
 		return
 	}
 	<-doneC
+	*/
 }
 
 func getTickersBySymbol(client *binance.Client, symbol string) *binance.BookTicker {
