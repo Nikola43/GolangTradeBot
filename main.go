@@ -38,15 +38,18 @@ func main() {
 	lastPrice := 0.0
 	// orderId := ""
 	// coinExist := false
-	coinName := "ppt"
+	coinName := "wrx"
 	pairCoinName := "btc"
 
+
+	if len(os.Args) == 2 {
+		coinName = os.Args[1]
+	}
 
 	if len(os.Args) == 3 {
 		coinName = os.Args[1]
 		pairCoinName = os.Args[2]
 	}
-
 
 	selectedCoin := strings.ToUpper(coinName)
 	selectedPair := strings.ToUpper(pairCoinName)
