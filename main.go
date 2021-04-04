@@ -38,7 +38,7 @@ func main() {
 	lastPrice := 0.0
 	// orderId := ""
 	// coinExist := false
-	coinName := "wrx"
+	coinName := "perl"
 	pairCoinName := "btc"
 
 
