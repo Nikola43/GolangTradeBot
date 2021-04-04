@@ -102,7 +102,7 @@ func main() {
 
 	initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
 	stopLossPrice = initialBuyPrice - (initialBuyPrice * 0.5 / 100)
-	//minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1 / 100)
+	minimumSellPrice = initialBuyPrice + (initialBuyPrice * 1 / 100)
 	highPrice = minimumSellPrice
 
 	fmt.Println("initialBuyPrice")
@@ -137,7 +137,7 @@ func main() {
 		return
 	}
 
-	os.Exit(1)
+
 
 	wsMarketStatHandler := func(event *binance.WsMarketStatEvent) {
 		currentPrice := parsePriceToFloat(event.BidPrice)
