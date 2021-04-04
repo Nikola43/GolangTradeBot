@@ -39,8 +39,8 @@ func main() {
 	lastPrice := 0.0
 	// orderId := ""
 	// coinExist := false
-	coinName := "wrx"
-	pairCoinName := "btc"
+	coinName := "nmr"
+	pairCoinName := "usdt"
 
 	if len(os.Args) == 2 {
 		coinName = os.Args[1]
@@ -85,8 +85,6 @@ func main() {
 
 	fmt.Println("initialBuyPrice")
 	fmt.Println(initialBuyPrice)
-
-	os.Exit(1)
 
 	// INITIAL BUY
 	order, err := client.NewCreateOrderService().Symbol(selectedSymbol).
