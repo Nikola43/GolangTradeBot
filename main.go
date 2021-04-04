@@ -54,7 +54,6 @@ func main() {
 	selectedCoin := strings.ToUpper(coinName)
 	selectedPair := strings.ToUpper(pairCoinName)
 	selectedSymbol := selectedCoin + "" + selectedPair
-	fmt.Println(selectedSymbol)
 
 	// API key version 2.0
 	client := binance.NewClient(apiKey, secretKey)
@@ -63,12 +62,13 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(account)
 
 	// Get Pair Balance
 	pairBalance := getCoinBalance(selectedPair, account.Balances)
 	selectedSymbolTicker := getTickersBySymbol(client, selectedSymbol)
 	buyQuantity = math.Trunc(parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice))
+	buyQuantity = math.Trunc(buyQuantity - (buyQuantity * 1 / 100))
+
 	sellQuantity = math.Trunc(buyQuantity - (buyQuantity * 1 / 100))
 
 	// INITIAL BUY
@@ -83,7 +83,8 @@ func main() {
 
 	initialBuyPrice = parsePriceToFloat(order.Price)
 	stopLossPrice = initialBuyPrice - (initialBuyPrice * 1 / 100)
-	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1 / 100)
+	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1.5 / 100)
+	highPrice = minimumSellPrice
 
 	fmt.Println("order.Status")
 	fmt.Println(order.Status)
@@ -103,8 +104,8 @@ func main() {
 			highPrice = currentPrice
 			color.Yellow("Nuevo precio más alto")
 
-			stopPrice := highPrice - (highPrice * 0.4 / 100)
-			sellPrice := highPrice - (highPrice * 0.7 / 100)
+			stopPrice := highPrice - (highPrice * 1 / 100)
+			sellPrice := highPrice - (highPrice * 1.5 / 100)
 
 			fmt.Println("sellPrice")
 			fmt.Println(sellPrice)
@@ -146,10 +147,12 @@ func main() {
 				Do(context.Background())
 			if err != nil {
 				fmt.Println(err)
+				os.Exit(1)
 				return
 			}
-
+			os.Exit(1)
 			return
+
 		}
 
 		if lastPrice > highPrice {
