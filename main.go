@@ -37,8 +37,8 @@ func main() {
 	lastPrice := 0.0
 	// orderId := ""
 	// coinExist := false
-	coinName := "ctsi"
-	pairCoinName := "usdt"
+	coinName := "ppt"
+	pairCoinName := "btc"
 
 
 	if len(os.Args) == 3 {
@@ -62,10 +62,9 @@ func main() {
 	// Get Pair Balance
 	pairBalance := getCoinBalance(selectedPair, account.Balances)
 	selectedSymbolTicker := getTickersBySymbol(client, selectedSymbol)
-	buyQuantity = math.Trunc(parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice))
+	buyQuantity = math.Trunc(parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice)) / 10
 	buyQuantity = math.Trunc(buyQuantity - (buyQuantity * 1 / 100))
-
-	sellQuantity = math.Trunc(buyQuantity - (buyQuantity * 0.5 / 100))
+	sellQuantity = math.Trunc(buyQuantity - (buyQuantity * 0.25 / 100))
 
 	// INITIAL BUY
 	order, err := client.NewCreateOrderService().Symbol(selectedSymbol).
@@ -76,14 +75,24 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Println(order)
 
-	initialBuyPrice = parsePriceToFloat(order.Price)
+	fmt.Println("order.Price")
+
+	initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
 	stopLossPrice = initialBuyPrice - (initialBuyPrice * 0.5 / 100)
-	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1 / 100)
+	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 0.5 / 100)
 	highPrice = minimumSellPrice
 
-	fmt.Println("order.Status")
-	fmt.Println(order.Status)
+	fmt.Println("initialBuyPrice")
+	fmt.Println(initialBuyPrice)
+
+	fmt.Println("minimumSellPrice")
+	fmt.Println(minimumSellPrice)
+
+	fmt.Println("stopLossPrice")
+	fmt.Println(stopLossPrice)
+
 	order = nil
 
 
@@ -100,8 +109,8 @@ func main() {
 			highPrice = currentPrice
 			color.Yellow("Nuevo precio más alto")
 
-			stopPrice := highPrice - (highPrice * 0.5 / 100)
-			sellPrice := highPrice - (highPrice * 0.7 / 100)
+			stopPrice := highPrice - (highPrice * 0.3 / 100)
+			sellPrice := highPrice - (highPrice * 0.5 / 100)
 
 			fmt.Println("sellPrice")
 			fmt.Println(sellPrice)
@@ -138,7 +147,7 @@ func main() {
 
 			order, err = client.NewCreateOrderService().Symbol(selectedSymbol).
 				Side(binance.SideTypeSell).Type(binance.OrderTypeMarket).
-				Quantity(parsePriceToString(buyQuantity)).
+				Quantity(parsePriceToString(sellQuantity)).
 				Do(context.Background())
 			if err != nil {
 				fmt.Println(err)
@@ -165,12 +174,21 @@ func main() {
 		fmt.Println(order)
 
 		if order != nil {
-			//o := getOrder(client, selectedSymbol, order.OrderID)
-			//if o.Status == binance.OrderStatusTypeFilled {
-				//color.Yellow("PROFIT SELL")
-				//os.Exit(1)
-				//return
-			//}
+			o := getOrder(client, selectedSymbol, order.OrderID)
+
+			if o != nil {
+				if o.Status == binance.OrderStatusTypeFilled {
+					color.Yellow("PROFIT SELL")
+					os.Exit(1)
+					return
+				}
+			} else {
+				color.Yellow("PROFIT SELL")
+				os.Exit(1)
+				return
+			}
+
+
 		}
 	}
 	errHandler := func(err error) {
