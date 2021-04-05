@@ -25,7 +25,7 @@ func main() {
 	colorGreen := "\033[32m"
 	colorCyan := "\033[36m"
 
-	usedBalancePercent := 10.0 // 10%
+	usedBalancePercent := 20.0 // 10%
 	priceColor := colorRed
 	// colorYellow := "\033[33m"
 	stopPrice := 0.0
@@ -37,6 +37,7 @@ func main() {
 	sellQuantity := 0.0
 	buyQuantity := 0.0
 	lastPrice := 0.0
+	minimumSellPrice := 0.0
 	// orderId := ""
 	// coinExist := false
 	coinName := "nmr"
@@ -77,12 +78,6 @@ func main() {
 	fmt.Println(sellQuantity)
 
 
-
-	initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
-	stopLossPrice = initialBuyPrice - (initialBuyPrice * 0.5 / 100)
-	minimumSellPrice := initialBuyPrice + (initialBuyPrice * 1 / 100)
-	highPrice = minimumSellPrice
-
 	fmt.Println("initialBuyPrice")
 	fmt.Println(initialBuyPrice)
 
@@ -101,8 +96,7 @@ func main() {
 	fmt.Println(selectedSymbolTicker.AskPrice)
 
 	initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
-	stopLossPrice = initialBuyPrice - (initialBuyPrice * 0.5 / 100)
-	minimumSellPrice = initialBuyPrice + (initialBuyPrice * 1 / 100)
+	minimumSellPrice = parsePriceToFloat(parsePriceToString(initialBuyPrice + (initialBuyPrice * 1.2 / 100)))
 	highPrice = minimumSellPrice
 
 	fmt.Println("initialBuyPrice")
@@ -115,9 +109,8 @@ func main() {
 	fmt.Println(stopLossPrice)
 
 	// set stop loss
-
-	stopPrice = initialBuyPrice - (initialBuyPrice * 0.5 / 100)
-	sellPrice = initialBuyPrice - (initialBuyPrice * 1.2 / 100)
+	stopPrice = parsePriceToFloat(parsePriceToString(initialBuyPrice - (initialBuyPrice * 0.5 / 100)))
+	sellPrice = parsePriceToFloat(parsePriceToString(initialBuyPrice - (initialBuyPrice * 0.8 / 100)))
 
 	fmt.Println("sellPrice")
 	fmt.Println(sellPrice)
@@ -147,8 +140,8 @@ func main() {
 			highPrice = currentPrice
 			color.Yellow("Nuevo precio más alto")
 
-			stopPrice = highPrice - (highPrice * 0.5 / 100)
-			sellPrice = highPrice - (highPrice * 1 / 100)
+			stopPrice = parsePriceToFloat(parsePriceToString(highPrice - (highPrice * 0.5 / 100)))
+			sellPrice = parsePriceToFloat(parsePriceToString(highPrice - (highPrice * 0.8 / 100)))
 
 			fmt.Println("sellPrice")
 			fmt.Println(sellPrice)
@@ -296,6 +289,7 @@ func parsePriceToFloat(price string) float64 {
 	f1, _ := strconv.ParseFloat(price, 8)
 	price = strconv.FormatFloat(f1, 'f', -1, 64) // 10.9
 	f2, _ := strconv.ParseFloat(price, 8)
+	//f2 = math.Round(f2*1000)/1000
 	return f2
 }
 
@@ -340,7 +334,7 @@ func parsePriceToFloat(str string) float64 {
 
 */
 func parsePriceToString(price float64) string {
-	s := fmt.Sprintf("%.4f", price)
+	s := fmt.Sprintf("%.5f", price)
 	return s
 }
 
