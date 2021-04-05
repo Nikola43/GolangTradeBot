@@ -255,7 +255,7 @@ func main() {
 			o := getOrder(client, selectedSymbol, order.OrderID)
 
 			if o != nil {
-				if o.Status == binance.OrderStatusTypeFilled   || o.Status == binance.OrderStatusTypeCanceled{
+				if o.Status == binance.OrderStatusTypeFilled {
 					color.Yellow("PROFIT SELL")
 					os.Exit(1)
 					return
