@@ -27,7 +27,7 @@ func main() {
 		_ = keyboard.Close()
 	}()
 
-	coinName := "ogn"
+	coinName := "ong"
 	pairCoinName := "usdt"
 
 	// binance.UseTestnet = true
