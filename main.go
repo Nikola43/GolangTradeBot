@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"github.com/adshao/go-binance/v2"
 	linq "github.com/ahmetb/go-linq/v3"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -27,90 +29,6 @@ func main() {
 		_ = keyboard.Close()
 	}()
 
-	coinName := "ong"
-	pairCoinName := "usdt"
-
-	// binance.UseTestnet = true
-	colorReset := "\033[0m"
-	colorRed := "\033[31m"
-	colorGreen := "\033[32m"
-	colorCyan := "\033[36m"
-
-	//usedBalancePercent := 100.0 // 10%
-	priceColor := colorRed
-	// colorYellow := "\033[33m"
-	stopPrice := 0.0
-	sellPrice := 0.0
-	//initialPrice := 0.0
-	initialBuyPrice := 0.0
-	highPrice := 0.0
-	sellQuantity := 0.0
-	buyQuantity := 0.0
-	lastPrice := 0.0
-	minimumSellPrice := 0.0
-	// orderId := ""
-	// coinExist := false
-	isProfit := false
-	hasCoin := false
-
-	var order *binance.CreateOrderResponse
-	var initialStopOrder *binance.CreateOrderResponse
-
-	if len(os.Args) == 2 {
-		coinName = os.Args[1]
-	}
-
-	if len(os.Args) == 3 {
-		coinName = os.Args[1]
-		pairCoinName = os.Args[2]
-	}
-
-	selectedCoin := strings.ToUpper(coinName)
-	selectedPair := strings.ToUpper(pairCoinName)
-	selectedSymbol := selectedCoin + "" + selectedPair
-
-	// API key version 2.0
-	client := binance.NewClient(apiKey, secretKey)
-	account, err := client.NewGetAccountService().Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	exchangeInfo, err := client.NewExchangeInfoService().Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-	}
-	// fmt.Println(exchangeInfo.Symbols)
-
-	symbolFilters := getSymbolFilters(selectedSymbol, exchangeInfo.Symbols)
-	var tickSize = symbolFilters.Filters[0]["tickSize"].(string)
-	var stepSize = symbolFilters.Filters[2]["stepSize"].(string)
-	//fmt.Println(symbolFilters.Filters)
-
-	fmt.Println(stepSize)
-	fmt.Println(tickSize)
-
-	step := parsePriceToFloat(stepSize)
-	s := fmt.Sprintf("%f", step)
-	p := parsePriceToFloat(s[0:])
-	s2 := fmt.Sprintf("%f", p)
-
-	fmt.Println(s2)
-	fmt.Println(p)
-
-	stepSizeInt := 0
-	if p == 1 {
-		stepSizeInt = 0
-	} else {
-		stepSizeInt = len(s2[0 : strings.Index(s2, "1")-1])
-	}
-	fmt.Println(stepSizeInt)
-	fmt.Println("----------")
-
-	tickSizeInt := len(tickSize[0 : strings.Index(tickSize, "1")-1])
-	fmt.Println(tickSizeInt)
-	fmt.Println("----------")
 
 	ch := make(chan string)
 
@@ -126,7 +44,59 @@ func main() {
 		}
 	}(ch)
 
+
+	coinName := "kdm"
+	pairCoinName := "usdt"
+
+	// binance.UseTestnet = true
+	colorReset := "\033[0m"
+	colorRed := "\033[31m"
+	colorGreen := "\033[32m"
+	colorCyan := "\033[36m"
+
+	priceColor := colorRed
+	// colorYellow := "\033[33m"
+	stopPrice := 0.0
+	sellPrice := 0.0
+	//initialPrice := 0.0
+	initialBuyPrice := 0.0
+	highPrice := 0.0
+	sellQuantity := 0.0
+	buyQuantity := 0.0
+	lastPrice := 0.0
+	minimumSellPrice := 0.0
+	// orderId := ""
+	// coinExist := false
+	stepSizeInt := 0
+	tickSizeInt := 0
+	isProfit := false
+	hasCoin := false
+	wantBuy := true
+	currentPrice := 0.0
+	var pricesHistory = [][]string{{"", ""}, {"", ""}}
+
+	var order *binance.CreateOrderResponse
+	var initialStopOrder *binance.CreateOrderResponse
+	var initialBuyOrder *binance.CreateOrderResponse
+	var pairBalance binance.Balance
+	var selectedSymbolTicker *binance.BookTicker
+
+	if len(os.Args) == 2 {
+		coinName = os.Args[1]
+	}
+
+	if len(os.Args) == 3 {
+		coinName = os.Args[1]
+		pairCoinName = os.Args[2]
+	}
+
+	selectedCoin := strings.ToUpper(coinName)
+	selectedPair := strings.ToUpper(pairCoinName)
+	selectedSymbol := selectedCoin + "" + selectedPair
+
+
 	/*
+
 		wsDepthHandler := func(event *binance.WsDepthEvent) {
 			select {
 			case stdin, _ := <-ch:
@@ -137,7 +107,6 @@ func main() {
 			default:
 				fmt.Println("Working..")
 			}
-
 
 			depthAsksSum := 0.0
 			depthBidsSum := 0.0
@@ -160,21 +129,17 @@ func main() {
 			fmt.Println(depthBidsSum)
 			fmt.Println("")
 
-
-			/*
 			if depthAsksSum > depthBidsSum {
 				log.Printf(colorRed+"%s"+colorReset, "SELL")
 			} else {
 				log.Printf(colorGreen+"%s"+colorReset, "BUY")
 			}
-	*/
 
-	/*
-				if depthAsksSum > depthBidsSum {
-					log.Printf(colorRed+"%s"+colorReset, "SELL")
-				} else {
-					log.Printf(colorGreen+"%s"+colorReset, "BUY")
-				}
+			if depthAsksSum > depthBidsSum {
+				log.Printf(colorRed+"%s"+colorReset, "SELL")
+			} else {
+				log.Printf(colorGreen+"%s"+colorReset, "BUY")
+			}
 		}
 		DepthErrHandler := func(err error) {
 			fmt.Println(err)
@@ -187,100 +152,149 @@ func main() {
 
 		// remove this if you do not want to be blocked here
 		<-DepthDoneC
+
 	*/
 
-	// Get Pair Balance
-	pairBalance := getCoinBalance(selectedPair, account.Balances)
-	selectedSymbolTicker := getTickersBySymbol(client, selectedSymbol)
-
-	buyQuantity = parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice)
-	// buyQuantity = parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice) / usedBalancePercent
-	buyQuantity = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(buyQuantity, stepSizeInt))-parsePriceToFloat(parsePriceToString((buyQuantity*1.0)/100, stepSizeInt)), stepSizeInt))
-	sellQuantity = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(buyQuantity, stepSizeInt))-parsePriceToFloat(parsePriceToString((buyQuantity*0.5)/100, stepSizeInt)), stepSizeInt))
-
-	fmt.Println("buyQuantity")
-	fmt.Println(buyQuantity)
-
-	fmt.Println("sellQuantity")
-	fmt.Println(sellQuantity)
-
-	initialBuyPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(selectedSymbolTicker.AskPrice), tickSizeInt))
-	fmt.Println("initialBuyPrice")
-	fmt.Println(initialBuyPrice)
-
-	initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
-	minimumSellPrice = initialBuyPrice + (initialBuyPrice * 3 / 100)
-	minimumSellPrice = parsePriceToFloat(parsePriceToString(minimumSellPrice, tickSizeInt))
-
-	highPrice = minimumSellPrice
-
-	fmt.Println("initialBuyPrice")
-	fmt.Println(initialBuyPrice)
-
-	fmt.Println("minimumSellPrice")
-	fmt.Println(minimumSellPrice)
-
-	// set stop loss
-	stopPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.5)/100, tickSizeInt)), tickSizeInt))
-	sellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.7)/100, tickSizeInt)), tickSizeInt))
-
-	fmt.Println("sellPrice")
-	fmt.Println(sellPrice)
-	fmt.Println("stopPrice")
-	fmt.Println(stopPrice)
-
-	// INITIAL BUY
-	initialBuyOrder, err := client.NewCreateOrderService().Symbol(selectedSymbol).
-		Side(binance.SideTypeBuy).Type(binance.OrderTypeMarket).
-		Quantity(parsePriceToString(buyQuantity, stepSizeInt)).
-		Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(initialBuyOrder)
-	hasCoin = true
-
-	fmt.Println("selectedSymbolTicker.AskPrice")
-	fmt.Println(selectedSymbolTicker.AskPrice)
-
-	initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
-	minimumSellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))+parsePriceToFloat(parsePriceToString((initialBuyPrice*3)/100, tickSizeInt)), tickSizeInt))
-	highPrice = minimumSellPrice
-
-	fmt.Println("initialBuyPrice")
-	fmt.Println(initialBuyPrice)
-
-	fmt.Println("minimumSellPrice")
-	fmt.Println(minimumSellPrice)
-
-	// set stop loss
-	stopPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.5)/100, tickSizeInt)), tickSizeInt))
-	sellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.7)/100, tickSizeInt)), tickSizeInt))
-
-	fmt.Println("sellPrice")
-	fmt.Println(sellPrice)
-	fmt.Println("stopPrice")
-	fmt.Println(stopPrice)
-
-	// CREATE STOP
-	initialStopOrder, err = client.NewCreateOrderService().Symbol(selectedSymbol).
-		Side(binance.SideTypeSell).Type(binance.OrderTypeStopLossLimit).
-		TimeInForce(binance.TimeInForceTypeGTC).Quantity(parsePriceToString(sellQuantity, stepSizeInt)).
-		Price(parsePriceToString(sellPrice, tickSizeInt)).
-		StopPrice(parsePriceToString(stopPrice, tickSizeInt)).
-		Do(context.Background())
+	// API key version 2.0
+	client := binance.NewClient(apiKey, secretKey)
+	account, err := client.NewGetAccountService().Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println("initialStopOrder")
-	fmt.Println(initialStopOrder)
-	fmt.Println(initialStopOrder.OrderID)
-	fmt.Println(initialStopOrder.Status)
+	exchangeInfo, err := client.NewExchangeInfoService().Do(context.Background())
+	if err != nil {
+		fmt.Println(err)
+	}
 
+	pairBalance = getCoinBalance(selectedPair, account.Balances)
+
+
+	fmt.Println("waiting")
 	wsMarketStatHandler := func(event *binance.WsMarketStatEvent) {
+
+		t := time.Now()
+		b := []string{t.Format("2006-01-02 15:04:05"), event.BidPrice}
+		pricesHistory = append(pricesHistory, b)
+
+		if hasCoin == false && wantBuy == true {
+			currentPrice = parsePriceToFloat(event.BidPrice)
+			log.Println("currentPrice")
+			log.Println(currentPrice)
+
+			symbolFilters := getSymbolFilters(selectedSymbol, exchangeInfo.Symbols)
+			var tickSize = symbolFilters.Filters[0]["tickSize"].(string)
+			var stepSize = symbolFilters.Filters[2]["stepSize"].(string)
+
+			//fmt.Println(stepSize)
+			//fmt.Println(tickSize)
+
+			step := parsePriceToFloat(stepSize)
+			s := fmt.Sprintf("%f", step)
+			p := parsePriceToFloat(s[0:])
+			s2 := fmt.Sprintf("%f", p)
+
+			//fmt.Println(s2)
+			//fmt.Println(p)
+
+
+			if p == 1 {
+				stepSizeInt = 0
+			} else {
+				stepSizeInt = len(s2[0 : strings.Index(s2, "1")-1])
+			}
+			//fmt.Println(stepSizeInt)
+			//fmt.Println("----------")
+
+			tickSizeInt = len(tickSize[0 : strings.Index(tickSize, "1")-1])
+			//fmt.Println(tickSizeInt)
+			//fmt.Println("----------")
+
+
+			// Get Pair Balance
+
+			selectedSymbolTicker = getTickersBySymbol(client, selectedSymbol)
+			buyQuantity = parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice)
+			//buyQuantity = parsePriceToFloat(pairBalance.Free) / parsePriceToFloat(selectedSymbolTicker.AskPrice) / usedBalancePercent
+			buyQuantity = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(buyQuantity, stepSizeInt))-parsePriceToFloat(parsePriceToString((buyQuantity*1.0)/100, stepSizeInt)), stepSizeInt))
+			sellQuantity = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(buyQuantity, stepSizeInt))-parsePriceToFloat(parsePriceToString((buyQuantity*0.5)/100, stepSizeInt)), stepSizeInt))
+
+			fmt.Println("buyQuantity")
+			fmt.Println(buyQuantity)
+
+			fmt.Println("sellQuantity")
+			fmt.Println(sellQuantity)
+
+			initialBuyPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(selectedSymbolTicker.AskPrice), tickSizeInt))
+			fmt.Println("initialBuyPrice")
+			fmt.Println(initialBuyPrice)
+
+			initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
+			fmt.Println("initialBuyPrice")
+			fmt.Println(initialBuyPrice)
+
+			fmt.Println("minimumSellPrice")
+			fmt.Println(minimumSellPrice)
+
+
+			// INITIAL BUY
+			initialBuyOrder, err = client.NewCreateOrderService().Symbol(selectedSymbol).
+				Side(binance.SideTypeBuy).Type(binance.OrderTypeMarket).
+				Quantity(parsePriceToString(buyQuantity, stepSizeInt)).
+				Do(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Println(initialBuyOrder)
+			hasCoin = true
+			wantBuy = false
+
+
+			fmt.Println("selectedSymbolTicker.AskPrice")
+			fmt.Println(selectedSymbolTicker.AskPrice)
+
+
+
+			fmt.Println("initialBuyPrice")
+			fmt.Println(initialBuyPrice)
+
+			fmt.Println("minimumSellPrice")
+			fmt.Println(minimumSellPrice)
+
+			// set stop loss
+
+			// set stop loss
+			stopPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.7)/100, tickSizeInt)), tickSizeInt))
+			sellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*2.0)/100, tickSizeInt)), tickSizeInt))
+
+			fmt.Println("sellPrice")
+			fmt.Println(sellPrice)
+			fmt.Println("stopPrice")
+			fmt.Println(stopPrice)
+			fmt.Println("sellPrice")
+			fmt.Println(sellPrice)
+			fmt.Println("stopPrice")
+			fmt.Println(stopPrice)
+
+			// CREATE STOP
+			initialStopOrder, err = client.NewCreateOrderService().Symbol(selectedSymbol).
+				Side(binance.SideTypeSell).Type(binance.OrderTypeStopLossLimit).
+				TimeInForce(binance.TimeInForceTypeGTC).Quantity(parsePriceToString(sellQuantity, stepSizeInt)).
+				Price(parsePriceToString(sellPrice, tickSizeInt)).
+				StopPrice(parsePriceToString(stopPrice, tickSizeInt)).
+				Do(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			fmt.Println("initialStopOrder")
+			fmt.Println(initialStopOrder)
+			fmt.Println(initialStopOrder.OrderID)
+			fmt.Println(initialStopOrder.Status)
+		}
 
 		select {
 		case stdin, _ := <-ch:
@@ -309,7 +323,22 @@ func main() {
 				initialStopOrder = nil
 				order = nil
 				hasCoin = false
+				wantBuy = false
 				log.Printf("\033[2K\r"+colorGreen+"%s"+colorReset, "SELL")
+
+				file, err := os.Create(parsePriceToString(currentPrice, stepSizeInt))
+				if err != nil {
+					log.Fatal("error", err)
+				}
+				defer file.Close()
+
+				writer := csv.NewWriter(file)
+				defer writer.Flush()
+
+				for _, value := range pricesHistory {
+					writer.Write(value)
+				}
+
 			}
 
 			if stdin == "b" {
@@ -332,7 +361,7 @@ func main() {
 				fmt.Println(initialBuyPrice)
 
 				initialBuyPrice = parsePriceToFloat(selectedSymbolTicker.AskPrice)
-				minimumSellPrice = initialBuyPrice + (initialBuyPrice * 3 / 100)
+				minimumSellPrice = initialBuyPrice + (initialBuyPrice * 3.0 / 100)
 				minimumSellPrice = parsePriceToFloat(parsePriceToString(minimumSellPrice, tickSizeInt))
 				highPrice = minimumSellPrice
 
@@ -347,8 +376,8 @@ func main() {
 				fmt.Println(initialBuyOrder)
 
 				// set stop loss
-				stopPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.5)/100, tickSizeInt)), tickSizeInt))
-				sellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.7)/100, tickSizeInt)), tickSizeInt))
+				stopPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*1.7)/100, tickSizeInt)), tickSizeInt))
+				sellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(initialBuyPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((initialBuyPrice*2.0)/100, tickSizeInt)), tickSizeInt))
 
 				// stop
 				initialStopOrder, err = client.NewCreateOrderService().Symbol(selectedSymbol).
@@ -362,7 +391,8 @@ func main() {
 					return
 				}
 				hasCoin = true
-				log.Printf("\033[2K\r"+colorGreen+"%s"+colorReset, "SELL")
+				wantBuy = false
+				log.Printf("\033[2K\r"+colorGreen+"%s"+colorReset, "BUY")
 			}
 
 		default:
@@ -370,7 +400,8 @@ func main() {
 		}
 
 		if hasCoin == true {
-			currentPrice := parsePriceToFloat(event.BidPrice)
+
+			currentPrice = parsePriceToFloat(event.BidPrice)
 
 			if currentPrice > initialBuyPrice {
 				isProfit = true
@@ -385,8 +416,8 @@ func main() {
 				color.Yellow("Nuevo precio más alto")
 
 				// set stop loss
-				stopPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(highPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((highPrice*1)/100, tickSizeInt)), tickSizeInt))
-				sellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(highPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((highPrice*1.2)/100, tickSizeInt)), tickSizeInt))
+				stopPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(highPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((highPrice*1.5)/100, tickSizeInt)), tickSizeInt))
+				sellPrice = parsePriceToFloat(parsePriceToString(parsePriceToFloat(parsePriceToString(highPrice, tickSizeInt))-parsePriceToFloat(parsePriceToString((highPrice*1.7)/100, tickSizeInt)), tickSizeInt))
 
 				fmt.Println("sellPrice")
 				fmt.Println(sellPrice)
@@ -425,10 +456,10 @@ func main() {
 
 			if isProfit == true {
 				profitPercent := PercentageChange(initialBuyPrice, currentPrice)
-				log.Printf("\033[2K\r"+colorGreen+"%s"+colorReset, "PROFIT: " + parsePriceToString(profitPercent, 2))
+				log.Printf("\033[2K\r"+colorGreen+"%s"+colorReset, "PROFIT: "+parsePriceToString(profitPercent, 2))
 			} else {
 				lossPercent := PercentageChange(initialBuyPrice, currentPrice)
-				log.Printf("\033[2K\r"+colorRed+"%s"+colorReset, "LOSS: " + parsePriceToString(lossPercent, 2))
+				log.Printf("\033[2K\r"+colorRed+"%s"+colorReset, "LOSS: "+parsePriceToString(lossPercent, 2))
 			}
 
 			// fmt.Printf("\033[2K\r"+priceColor+"%s "+colorGreen+"%s "+colorRed+"%s "+colorReset, parsePriceToString(currentPrice, tickSizeInt), parsePriceToFloat(event.BidPrice), parsePriceToFloat(event.AskPrice))
@@ -473,6 +504,7 @@ func main() {
 	}
 	errHandler := func(err error) {
 		fmt.Println(err)
+		return
 	}
 	doneC, _, err := binance.WsMarketStatServe(selectedSymbol, wsMarketStatHandler, errHandler)
 	if err != nil {
