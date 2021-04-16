@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	apiKey    = "z8oJ86HRXRKHppUeLZMOY8564f3gnNueSrmOL1455SXtkTmyHwusLc1XCjjGBKZt"
-	secretKey = "UZggnxZ7moBpHw74iGK9SkXHlnci6RAsajO7x1wptsGvgr2qs5lRNu6y5WvJZvDJ"
+	apiKey    = ""
+	secretKey = ""
 )
 
 func main() {
